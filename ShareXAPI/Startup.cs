@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -31,13 +28,22 @@ namespace ShareXAPI
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IOptions<ApiOptions> apiOptions)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env
+            , ILoggerFactory loggerFactory, IOptions<ApiOptions> apiOptions)
         {
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+                loggerFactory.AddDebug(LogLevel.Debug);
+            }
+            else
+            {
+                loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             }
 
+            if (apiOptions.Value.UseAzureIntegration)
+                loggerFactory.AddAzureWebAppDiagnostics();
+            
             try
             {
                 foreach (var apiOption in apiOptions.Value.Uploader)
@@ -51,7 +57,7 @@ namespace ShareXAPI
                     
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 throw new InvalidDataException("Invalid configuration");
             }
