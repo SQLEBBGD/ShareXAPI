@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace ShareXAPI.Options
+﻿namespace ShareXAPI.Options
 {
     public class UploaderOptions
     {
+        public ApiResponseType ResponseType { get; set; } = ApiResponseType.Redirect;
         public string WebBasePath { get; set; }
         public string LocalBasePath { get; set; }
         public string[] FileExtensions { get; set; }
