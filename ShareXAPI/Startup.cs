@@ -52,7 +52,8 @@ namespace ShareXAPI
                     app.UseStaticFiles(new StaticFileOptions
                     {
                         FileProvider = new PhysicalFileProvider(apiOption.LocalBasePath),
-                        RequestPath = "/" + apiOption.WebBasePath
+                        RequestPath = "/" + apiOption.WebBasePath,
+                        ServeUnknownFileTypes = true
                     });
                     
                 }
