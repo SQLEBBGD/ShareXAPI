@@ -23,6 +23,7 @@ namespace ShareXAPI.Controllers
         }
 
         [HttpPost("/{someName}")]
+        [RequestSizeLimit(100_000_000_000)]
         public IActionResult Post([FromRoute]string someName, [FromForm]Model model)
         {
             var file = model.File;
