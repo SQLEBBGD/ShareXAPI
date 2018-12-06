@@ -2,6 +2,7 @@
 using System.IO;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -31,38 +32,35 @@ namespace ShareXAPI
         public void Configure(IApplicationBuilder app, IHostingEnvironment env
             , ILoggerFactory loggerFactory, IOptions<ApiOptions> apiOptions)
         {
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor
+                                   | ForwardedHeaders.XForwardedProto
+                                   | ForwardedHeaders.XForwardedHost
+            });
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
                 loggerFactory.AddDebug(LogLevel.Debug);
             }
-            else
-            {
-                loggerFactory.AddConsole(Configuration.GetSection("Logging"));
-            }
+            loggerFactory.AddConsole(Configuration.GetSection("Logging"));
 
             if (apiOptions.Value.UseAzureIntegration)
                 loggerFactory.AddAzureWebAppDiagnostics();
-            
-            try
+
+            foreach (var apiOption in apiOptions.Value.Uploader)
             {
-                foreach (var apiOption in apiOptions.Value.Uploader)
+                Directory.CreateDirectory(apiOption.LocalBasePath);
+                app.UseStaticFiles(new StaticFileOptions
                 {
-                    Directory.CreateDirectory(apiOption.LocalBasePath);
-                    app.UseStaticFiles(new StaticFileOptions
-                    {
-                        FileProvider = new PhysicalFileProvider(apiOption.LocalBasePath),
-                        RequestPath = "/" + apiOption.WebBasePath,
-                        ServeUnknownFileTypes = true
-                    });
-                    
-                }
+                    FileProvider = new PhysicalFileProvider(apiOption.LocalBasePath),
+                    RequestPath = "/" + apiOption.WebBasePath,
+                    ServeUnknownFileTypes = true
+                });
+
             }
-            catch (Exception)
-            {
-                throw new InvalidDataException("Invalid configuration");
-            }
-            
+
             app.UseMvcWithDefaultRoute();
         }
     }
