@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 using ShareXAPI.Extensions;
 using ShareXAPI.Models;
@@ -35,86 +36,87 @@ namespace ShareXAPI.Controllers
             _options = options.Value;
         }
 
-        [HttpPost("/old/{uploadName}")]
-        public async Task<IActionResult> Post([FromRoute]string uploadName, [FromForm]PostFileModel model)
-        {
-            IFormFile file = null; //"sss"; //model.File;
-            //if (file == null)
-            //{
-            //    return BadRequest("No file given.");
-            //}
-            var apiKey = model.ApiKey;
+        //[HttpPost("/old/{uploadName}")]
+        //public async Task<IActionResult> Post([FromRoute]string uploadName, [FromForm]PostFileModel model)
+        //{
+        //    IFormFile file = null; //"sss"; //model.File;
+        //    //if (file == null)
+        //    //{
+        //    //    return BadRequest("No file given.");
+        //    //}
+        //    var apiKey = model.ApiKey;
             
 
-            var uploader =
-                _options.Uploader.FirstOrDefault(
-                    s => s.WebBasePath.Equals(uploadName, StringComparison.OrdinalIgnoreCase)
-                         && (s.ApiKey.Equals(apiKey) || string.IsNullOrEmpty(s.ApiKey)));
-            if (uploader == null)
-            {
-                return BadRequest("Uploader not found, invalid upload path or invalid API key.");
-            }
+        //    var uploader =
+        //        _options.Uploader.FirstOrDefault(
+        //            s => s.WebBasePath.Equals(uploadName, StringComparison.OrdinalIgnoreCase)
+        //                 && (s.ApiKey.Equals(apiKey) || string.IsNullOrEmpty(s.ApiKey)));
+        //    if (uploader == null)
+        //    {
+        //        return BadRequest("Uploader not found, invalid upload path or invalid API key.");
+        //    }
 
-            var fileExtension = Path.GetExtension(file.FileName).ToLower();
+        //    var fileExtension = Path.GetExtension(file.FileName).ToLower();
 
-            if (!ValidateFileSize(uploader.MaxFileSize, file.Length))
-            {
-                return BadRequest($"File does not meet the Requirements. Maximum size {uploader.MaxFileSize}MB.");
-            }
+        //    if (!ValidateFileSize(uploader.MaxFileSize, file.Length))
+        //    {
+        //        return BadRequest($"File does not meet the Requirements. Maximum size {uploader.MaxFileSize}MB.");
+        //    }
 
-            if (!uploader.FileExtensions.Contains(fileExtension) && !uploader.FileExtensions.Contains("*"))
-            {
-                return BadRequest(
-                    $"File does not meet the requirements. Invalid extension ({fileExtension}), allowed extensions: [{string.Join(", ", uploader.FileExtensions)}]");
-            }
+        //    if (!uploader.FileExtensions.Contains(fileExtension) && !uploader.FileExtensions.Contains("*"))
+        //    {
+        //        return BadRequest(
+        //            $"File does not meet the requirements. Invalid extension ({fileExtension}), allowed extensions: [{string.Join(", ", uploader.FileExtensions)}]");
+        //    }
 
-            Directory.CreateDirectory(uploader.LocalBasePath);
+        //    Directory.CreateDirectory(uploader.LocalBasePath);
 
-            var fileName = GetRandomFileName(fileExtension);
-            var filePath = Path.Combine(uploader.LocalBasePath, fileName);
-            var fileSize = file.Length;
+        //    var fileName = GetRandomFileName(fileExtension);
+        //    var filePath = Path.Combine(uploader.LocalBasePath, fileName);
+        //    var fileSize = file.Length;
 
-            if (uploader.MaxFolderSize > 0)
-            {
-                if (fileSize > uploader.MaxFolderSize * 1024 * 1024)
-                {
-                    return BadRequest("File bigger than max foldersize");
-                }
+        //    if (uploader.MaxFolderSize > 0)
+        //    {
+        //        if (fileSize > uploader.MaxFolderSize * 1024 * 1024)
+        //        {
+        //            return BadRequest("File bigger than max foldersize");
+        //        }
 
-                while (GetDirectorySize(uploader.LocalBasePath) + fileSize > uploader.MaxFolderSize * 1024 * 1024)
-                {
-                    DeleteOldestFile(uploader.LocalBasePath);
-                }
-            }
+        //        while (GetDirectorySize(uploader.LocalBasePath) + fileSize > uploader.MaxFolderSize * 1024 * 1024)
+        //        {
+        //            DeleteOldestFile(uploader.LocalBasePath);
+        //        }
+        //    }
 
-            while (System.IO.File.Exists(filePath))
-            {
-                fileName = GetRandomFileName(fileExtension);
-                filePath = Path.Combine(uploader.LocalBasePath, fileName);
-            }
+        //    while (System.IO.File.Exists(filePath))
+        //    {
+        //        fileName = GetRandomFileName(fileExtension);
+        //        filePath = Path.Combine(uploader.LocalBasePath, fileName);
+        //    }
 
-            using (var fs = System.IO.File.Create(filePath))
-            {
-                await file.CopyToAsync(fs);
-            }
+        //    using (var fs = System.IO.File.Create(filePath))
+        //    {
+        //        await file.CopyToAsync(fs);
+        //    }
 
-            if (uploader.ResponseType == ApiResponseType.Redirect)
-                return LocalRedirect($"/{uploader.WebBasePath}/{fileName}/{file.FileName}");
+        //    if (uploader.ResponseType == ApiResponseType.Redirect)
+        //        return LocalRedirect($"/{uploader.WebBasePath}/{fileName}/{file.FileName}");
 
-            return Ok(new ResultModel
-            {
-                FileUrl = ToAbsoluteUrl(Url.Content(uploader.WebBasePath + "/" + fileName + "/" + file.FileName)),
-                DeleteUrl = ToAbsoluteUrl(Url.Action("Delete", "Uploader", new { uploadName = uploader.WebBasePath, fileName }))
-            });
-        }
+        //    return Ok(new ResultModel
+        //    {
+        //        FileUrl = ToAbsoluteUrl(Url.Content(uploader.WebBasePath + "/" + fileName + "/" + file.FileName)),
+        //        DeleteUrl = ToAbsoluteUrl(Url.Action("Delete", "Uploader", new { uploadName = uploader.WebBasePath, fileName }))
+        //    });
+        //}
 
         [HttpPost("/{uploadName}")]
         [DisableRequestSizeLimit]
         [DisableFormValueModelBinding]
         [AcceptMultipart]
-        public async Task<IActionResult> Upload([FromRoute]string uploadName)
+        public async Task<IActionResult> Upload([FromRoute]string uploadName, [FromQuery(Name = "k")] string apiKeyQuery)
         {
-            var apiKey = HttpContext.Request.Headers["ApiKey"];
+            var apiKeys = HttpContext.Request.Headers["ApiKey"];
+            var apiKey = apiKeys.Count == 1 ? apiKeys[0] : apiKeyQuery;
 
             var uploader =
                 _options.Uploader.FirstOrDefault(

@@ -1,0 +1,67 @@
+﻿@model ShareXAPI.Models.UploadFileModel
+
+@{
+    ViewBag.Title = "title";
+    Layout = "_Layout";
+    var uploaders = (SelectList)ViewData["uploaders"];
+}
+
+<h2>Upload</h2>
+<form asp-action="Upload" asp-controller="Home" id="upload-form">
+    <select asp-for="Uploader" asp-items="@uploaders" id="uploader">
+    </select>
+    <input asp-for="ApiKey" id="api-key"/>
+    <input type="file" name="file"/>
+    <button type="submit">Submit!</button>
+    <div style="margin-top: 2.5%">
+        <textarea id="status" readonly="readonly" style="width: 50%; height: 5em"></textarea>
+    </div>
+</form>
+
+<image id="image">
+
+</image>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+<script>
+    function setActionUrl() {
+        var form = $("#upload-form");
+        form.attr('action', `/${encodeURIComponent($("#uploader").val())}?k=${encodeURIComponent($("#api-key").val())}`);
+    }
+
+    $(window).ready(() => {
+
+        $("#api-key").on("change", () => setActionUrl());
+        $("#uploader").on("change", () => setActionUrl());
+        setActionUrl();
+
+        var form = $("#upload-form");
+        form.on("submit",
+            function (e) {
+                e.preventDefault();
+                $("#status").val("Uploading");
+                var formData = new FormData(form[0]);
+
+                $.ajax({
+                    url: form.attr('action'),
+                    data: formData,
+                    type: 'POST',
+                    contentType: false, // NEEDED, DON'T OMIT THIS (requires jQuery 1.6+)
+                    processData: false, // NEEDED, DON'T OMIT THIS
+                    // ... Other options like success and etc
+
+                    success: function (result) {
+
+                        var fileLoc = result.fileUrl;
+                        $("#status").val(fileLoc);
+                        
+                        //window.location.href = fileLoc;
+                    },
+                    error: function(result) {
+                        $("#status").val(result.statusText + "\n" + result.responseText);
+                    }
+                    
+                });
+            });
+    });
+</script>
