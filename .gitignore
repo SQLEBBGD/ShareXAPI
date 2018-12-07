@@ -6,8 +6,7 @@
 *.user
 *.userosscache
 *.sln.docstates
-*.sh
-*.bat
+scripts_local/
 
 #publish profiles
 PublishProfiles/
