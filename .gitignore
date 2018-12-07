@@ -6,6 +6,8 @@
 *.user
 *.userosscache
 *.sln.docstates
+*.sh
+*.bat
 
 #publish profiles
 PublishProfiles/
